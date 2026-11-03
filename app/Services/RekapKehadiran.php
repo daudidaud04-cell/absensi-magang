@@ -80,10 +80,17 @@ class RekapKehadiran
 
         $byDate = $records->keyBy(fn ($r) => Carbon::parse($r->date)->toDateString());
 
+        // Hari sebelum akun peserta dibuat tidak dihitung alpha (kecuali sudah ada catatan absensi)
+        $terdaftar = $u->created_at?->copy()->startOfDay();
+
         foreach (CarbonPeriod::create($start, $end) as $day) {
             $key   = $day->toDateString();
             $rec   = $byDate->get($key);
             $kerja = $u->isWorkday($day);
+
+            if (! $rec && $terdaftar && $day->lt($terdaftar)) {
+                continue; // belum terdaftar di sistem
+            }
 
             if ($kerja && ! $rec && $day->isToday()) {
                 continue; // hari ini belum selesai, belum dihitung alpha

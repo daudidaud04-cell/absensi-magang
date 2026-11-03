@@ -36,11 +36,17 @@ class IndividuRingkasanSheet implements FromCollection, WithTitle, WithStyles, W
 
         $efektif = $h['hari_kerja'] - $h['izin'] - $h['sakit'];
 
+        $jenjang = match ($u->education_level) {
+            'smk' => 'SMK',
+            'perguruan_tinggi' => 'Perguruan Tinggi',
+            default => '-',
+        };
+
         return collect([
             ['IDENTITAS', ''],                                                          // baris 4
             ['Nama', $u->name],                                                         // 5
             ['Email', $u->email],                                                       // 6
-            ['Jenjang', $u->education_level ? strtoupper($u->education_level) : '-'],  // 7
+            ['Jenjang', $jenjang],                                                      // 7
             ['Asal Sekolah/Kampus', $u->instansi ?: '-'],                               // 8
             ['Divisi', $u->division?->name ?: ($u->divisi ?: '-')],                     // 9
             ['Periode', $tgl($u->start_date) . ' s.d. ' . $tgl($u->end_date)],          // 10
@@ -98,7 +104,6 @@ class IndividuRingkasanSheet implements FromCollection, WithTitle, WithStyles, W
         }
 
         Tampilan::siapCetak($sheet, 4);
-        
 
         return [];
     }

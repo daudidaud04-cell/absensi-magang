@@ -4,7 +4,6 @@ namespace App\Console\Commands;
 
 use App\Models\Attendance;
 use App\Models\User;
-use App\Services\AttendanceService;
 use Illuminate\Console\Command;
 
 class MarkAbsentees extends Command
@@ -12,23 +11,23 @@ class MarkAbsentees extends Command
     protected $signature = 'absensi:tandai-alpha';
     protected $description = 'Tandai peserta aktif yang tidak absen hari ini sebagai alpha';
 
-    public function handle(AttendanceService $svc): int
+    public function handle(): int
     {
         $now = now();
-        if (! $svc->isWorkday($now)) {
-            $this->info('Bukan hari kerja, dilewati.');
-
-            return self::SUCCESS;
-        }
-
         $date = $now->toDateString();
         $count = 0;
 
         $users = User::where('role', 'magang')
             ->whereDate('start_date', '<=', $date)
-            ->whereDate('end_date', '>=', $date)->get();
+            ->whereDate('end_date', '>=', $date)
+            ->whereDate('created_at', '<=', $date)
+            ->get();
 
         foreach ($users as $user) {
+            if (! $user->isWorkday($now)) {
+                continue; // bukan hari kerja untuk peserta ini
+            }
+
             $row = Attendance::firstOrCreate(
                 ['user_id' => $user->id, 'date' => $date],
                 ['status' => 'alpha', 'source' => 'manual', 'admin_notes' => 'Ditandai alpha otomatis oleh sistem']
@@ -40,4 +39,4 @@ class MarkAbsentees extends Command
 
         return self::SUCCESS;
     }
-}   
+}

@@ -71,8 +71,8 @@ class PesertaController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'email', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
-            ...$this->profileRules(),
-        ]);
+            ...$this->profileRules(true),
+        ], $this->pesanValidasi());
 
         $user = new User($data);
         $user->forceFill([
@@ -114,7 +114,7 @@ class PesertaController extends Controller
             'email' => ['required', 'email', Rule::unique('users', 'email')->ignore($user->id)],
             'password' => ['nullable', 'string', 'min:8'],
             ...$this->profileRules(),
-        ]);
+        ], $this->pesanValidasi());
 
         if (empty($data['password'])) {
             unset($data['password']);
@@ -191,7 +191,11 @@ class PesertaController extends Controller
             ->get(['id', 'name', 'location_id']);
     }
 
-    private function profileRules(): array
+    /**
+     * @param  bool  $baru  true saat tambah peserta baru: tanggal selesai tidak boleh sudah lewat.
+     *                      Saat edit tetap false supaya data alumni lama masih bisa diedit.
+     */
+    private function profileRules(bool $baru = false): array
     {
         return [
             'education_level' => ['required', 'in:smk,perguruan_tinggi'],
@@ -211,7 +215,17 @@ class PesertaController extends Controller
             'certificate_number' => ['nullable', 'string', 'max:100'],
             'certificate_date' => ['nullable', 'date'],
             'start_date' => ['required', 'date'],
-            'end_date' => ['required', 'date', 'after_or_equal:start_date'],
+            'end_date' => array_merge(
+                ['required', 'date', 'after_or_equal:start_date'],
+                $baru ? ['after_or_equal:today'] : []
+            ),
+        ];
+    }
+
+    private function pesanValidasi(): array
+    {
+        return [
+            'end_date.after_or_equal' => 'Tanggal selesai tidak boleh sebelum tanggal mulai atau sebelum hari ini.',
         ];
     }
 }
