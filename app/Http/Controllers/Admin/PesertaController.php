@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Division;
 use App\Models\Location;
 use App\Models\User;
 use App\Services\RekapKehadiran;
@@ -22,7 +21,7 @@ class PesertaController extends Controller
         $today = today()->toDateString();
 
         $query = User::where('role', 'magang')->orderBy('name')
-            ->with(['location:id,name', 'division:id,name']);
+            ->with('location:id,name');
 
         if ($status === 'aktif') {
             $query->where(fn ($q) => $q->whereNull('end_date')->orWhereDate('end_date', '>=', $today));
@@ -47,7 +46,6 @@ class PesertaController extends Controller
                 'instansi' => $u->instansi,
                 'education_level' => $u->education_level,
                 'location' => $u->location?->name,
-                'division' => $u->division?->name,
                 'start_date' => $u->start_date?->toDateString(),
                 'end_date' => $u->end_date?->toDateString(),
                 'status_magang' => $u->status_magang,
@@ -62,7 +60,6 @@ class PesertaController extends Controller
         return Inertia::render('admin/peserta/form', [
             'peserta' => null,
             'locations' => $this->locationOptions(),
-            'divisions' => $this->divisionOptions(),
         ]);
     }
 
@@ -93,7 +90,7 @@ class PesertaController extends Controller
             'peserta' => [
                 ...$user->only([
                     'id', 'name', 'email', 'nim_nis', 'phone', 'instansi', 'pembimbing',
-                    'education_level', 'major', 'location_id', 'division_id',
+                    'education_level', 'major', 'location_id',
                     'school_supervisor', 'guardian_phone', 'letter_number',
                     'certificate_number',
                 ]),
@@ -102,7 +99,6 @@ class PesertaController extends Controller
                 'certificate_date' => $user->certificate_date?->format('Y-m-d'),
             ],
             'locations' => $this->locationOptions($user->location_id),
-            'divisions' => $this->divisionOptions($user->division_id),
         ]);
     }
 
@@ -208,14 +204,6 @@ class PesertaController extends Controller
             ->get(['id', 'name']);
     }
 
-    private function divisionOptions(?int $currentId = null)
-    {
-        return Division::where(fn ($q) => $q->where('is_active', true)
-            ->when($currentId, fn ($q) => $q->orWhere('id', $currentId)))
-            ->orderBy('name')
-            ->get(['id', 'name', 'location_id']);
-    }
-
     /**
      * @param  bool  $baru  true saat tambah peserta baru: tanggal selesai tidak boleh sudah lewat.
      *                      Saat edit tetap false supaya data alumni lama masih bisa diedit.
@@ -229,11 +217,7 @@ class PesertaController extends Controller
             'guardian_phone' => ['nullable', 'string', 'max:20'],
             'instansi' => ['nullable', 'string', 'max:255'],
             'major' => ['nullable', 'string', 'max:255'],
-            'location_id' => ['nullable', 'exists:locations,id'],
-            'division_id' => [
-                'nullable',
-                Rule::exists('divisions', 'id')->where('location_id', request('location_id')),
-            ],
+            'location_id' => ['required', 'exists:locations,id'],
             'pembimbing' => ['nullable', 'string', 'max:255'],
             'school_supervisor' => ['nullable', 'string', 'max:255'],
             'letter_number' => ['nullable', 'string', 'max:100'],

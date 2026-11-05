@@ -25,7 +25,6 @@ type Peserta = {
     instansi: string | null;
     education_level: string | null;
     location: string | null;
-    division: string | null;
     start_date: string | null;
     end_date: string | null;
     status_magang: string;
@@ -758,7 +757,7 @@ export default function PesertaIndex({ pesertas, status, level }: Props) {
         if (!key) return pesertas;
 
         return pesertas.filter((p) =>
-            [p.name, p.email, p.instansi, p.location, p.division]
+            [p.name, p.email, p.instansi, p.location]
                 .filter(Boolean)
                 .some((v) => (v as string).toLowerCase().includes(key)),
         );
@@ -1001,10 +1000,6 @@ export default function PesertaIndex({ pesertas, status, level }: Props) {
 
                                                 <td className="px-3 py-3">
                                                     <p>{p.location ?? '–'}</p>
-
-                                                    {p.division && (
-                                                        <p className="text-xs text-muted-foreground">{p.division}</p>
-                                                    )}
                                                 </td>
 
                                                 <td className="px-3 py-3 whitespace-nowrap">

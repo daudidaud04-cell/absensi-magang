@@ -39,9 +39,14 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $request->user()
+                    ? [
+                        ...$request->user()->toArray(),
+                        'lokasi' => $request->user()->location?->name,
+                    ]
+                    : null,
             ],
-            // BARU: pesan flash (dipakai untuk notifikasi "berhasil dihapus")
+            // Pesan flash (dipakai untuk notifikasi "berhasil dihapus")
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
             ],

@@ -8,7 +8,7 @@ type Shared = {
             name: string;
             email: string;
             instansi?: string | null;
-            divisi?: string | null;
+            lokasi?: string | null;
             pembimbing?: string | null;
             start_date?: string | null;
             end_date?: string | null;
@@ -21,7 +21,7 @@ export default function Profil() {
 
     const rows: [string, string | null | undefined][] = [
         ['Instansi', user.instansi],
-        ['Divisi', user.divisi],
+        ['Lokasi penempatan', user.lokasi],
         ['Pembimbing', user.pembimbing],
         ['Periode magang', user.start_date && user.end_date ? `${user.start_date} s.d. ${user.end_date}` : null],
     ];

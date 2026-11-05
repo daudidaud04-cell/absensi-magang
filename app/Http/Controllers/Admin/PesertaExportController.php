@@ -36,7 +36,7 @@ class PesertaExportController extends Controller
         $q      = trim((string) $r->query('q', ''));
 
         return User::where('role', 'magang')
-            ->with('division:id,name')
+            ->with('location:id,name')
             ->when($level === 'smk', fn ($x) => $x->whereRaw('LOWER(education_level) IN (?, ?)', ['smk', 'sma']))
             ->when($level === 'perguruan_tinggi', fn ($x) => $x->where(fn ($w) => $w
                 ->whereNull('education_level')
@@ -51,4 +51,4 @@ class PesertaExportController extends Controller
             ->when($status !== 'semua', fn ($c) => $c->filter(fn ($u) => $u->status_magang === $status))
             ->values();
     }
-}   
+}

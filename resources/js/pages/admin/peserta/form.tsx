@@ -9,7 +9,6 @@ type Peserta = {
     nim_nis: string | null;
     phone: string | null;
     instansi: string | null;
-    division_id: number | null;
     pembimbing: string | null;
     start_date: string | null;
     end_date: string | null;
@@ -24,7 +23,6 @@ type Peserta = {
 };
 
 type Option = { id: number; name: string };
-type DivisionOption = Option & { location_id: number };
 
 type Key =
     | 'name'
@@ -36,7 +34,6 @@ type Key =
     | 'guardian_phone'
     | 'instansi'
     | 'major'
-    | 'division_id'
     | 'location_id'
     | 'pembimbing'
     | 'school_supervisor'
@@ -60,11 +57,9 @@ const toOptions = (items: Option[]): [string, string][] => [['', '- pilih -'], .
 export default function PesertaForm({
     peserta,
     locations,
-    divisions,
 }: {
     peserta: Peserta | null;
     locations: Option[];
-    divisions: DivisionOption[];
 }) {
     const form = useForm<Record<Key, string>>({
         name: peserta?.name ?? '',
@@ -76,7 +71,6 @@ export default function PesertaForm({
         guardian_phone: peserta?.guardian_phone ?? '',
         instansi: peserta?.instansi ?? '',
         major: peserta?.major ?? '',
-        division_id: peserta?.division_id ? String(peserta.division_id) : '',
         location_id: peserta?.location_id ? String(peserta.location_id) : '',
         pembimbing: peserta?.pembimbing ?? '',
         school_supervisor: peserta?.school_supervisor ?? '',
@@ -88,7 +82,6 @@ export default function PesertaForm({
     });
 
     const smk = form.data.education_level === 'smk';
-    const divisionChoices = divisions.filter((d) => String(d.location_id) === form.data.location_id);
 
     const fields: FieldDef[] = [
         { key: 'name', label: 'Nama lengkap' },
@@ -111,12 +104,6 @@ export default function PesertaForm({
             key: 'location_id',
             label: 'Lokasi penempatan',
             options: toOptions(locations),
-            onChangeExtra: () => form.setData('division_id', ''),
-        },
-        {
-            key: 'division_id',
-            label: form.data.location_id ? 'Divisi / unit' : 'Divisi / unit (pilih lokasi dulu)',
-            options: toOptions(divisionChoices),
         },
         { key: 'pembimbing', label: 'Pembimbing lapangan (PTSI)' },
         { key: 'school_supervisor', label: smk ? 'Guru pembimbing' : 'Dosen pembimbing' },
