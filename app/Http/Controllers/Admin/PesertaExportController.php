@@ -34,6 +34,7 @@ class PesertaExportController extends Controller
         $status = $r->query('status', 'aktif');   // aktif | alumni | semua
         $level  = $r->query('level', 'semua');    // semua | smk | perguruan_tinggi
         $q      = trim((string) $r->query('q', ''));
+        $lokasi = trim((string) $r->query('location', 'semua'));
 
         return User::where('role', 'magang')
             ->with('location:id,name')
@@ -45,6 +46,7 @@ class PesertaExportController extends Controller
                 ->where('name', 'like', "%{$q}%")
                 ->orWhere('email', 'like', "%{$q}%")
                 ->orWhere('instansi', 'like', "%{$q}%")))
+            ->when($lokasi !== '' && $lokasi !== 'semua', fn ($x) => $x->whereHas('location', fn ($l) => $l->where('name', $lokasi)))
             ->orderBy('name')
             ->get()
             // status_magang adalah accessor, jadi disaring setelah data diambil

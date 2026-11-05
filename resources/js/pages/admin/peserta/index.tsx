@@ -741,35 +741,43 @@ export default function PesertaIndex({ pesertas, status, level }: Props) {
     const { flash } = usePage<{ flash?: { success?: string } }>().props;
 
     const [q, setQ] = useState('');
+    const [lokasi, setLokasi] = useState('semua');
     const [page, setPage] = useState(1);
     const [detail, setDetail] = useState<Peserta | null>(null);
     const [hapus, setHapus] = useState<Peserta | null>(null);
     const [deleting, setDeleting] = useState(false);
 
+    // Daftar lokasi untuk dropdown (dari peserta pada tab saat ini)
+    const daftarLokasi = useMemo(
+        () => Array.from(new Set(pesertas.map((p) => p.location).filter(Boolean) as string[])).sort(),
+        [pesertas],
+    );
+
     // Kembali ke halaman 1 saat pencarian atau filter berubah
     useEffect(() => {
         setPage(1);
-    }, [q, status, level]);
+    }, [q, status, level, lokasi]);
 
     const filtered = useMemo(() => {
         const key = q.trim().toLowerCase();
 
-        if (!key) return pesertas;
+        return pesertas.filter((p) => {
+            if (lokasi !== 'semua' && p.location !== lokasi) return false;
+            if (!key) return true;
 
-        return pesertas.filter((p) =>
-            [p.name, p.email, p.instansi, p.location]
+            return [p.name, p.email, p.instansi, p.location]
                 .filter(Boolean)
-                .some((v) => (v as string).toLowerCase().includes(key)),
-        );
-    }, [pesertas, q]);
+                .some((v) => (v as string).toLowerCase().includes(key));
+        });
+    }, [pesertas, q, lokasi]);
 
     const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
     const current = Math.min(page, totalPages);
     const start = (current - 1) * PER_PAGE;
     const visible = filtered.slice(start, start + PER_PAGE);
 
-    // Export membawa filter yang sedang aktif (tab, jenjang, dan pencarian)
-    const exportUrl = `/admin/peserta/export?${new URLSearchParams({ status, level, q: q.trim() }).toString()}`;
+    // Export membawa filter yang sedang aktif (tab, jenjang, lokasi, dan pencarian)
+    const exportUrl = `/admin/peserta/export?${new URLSearchParams({ status, level, q: q.trim(), location: lokasi }).toString()}`;
 
     // Kirim permintaan hapus setelah admin menekan "Ya, hapus"
     const konfirmasiHapus = () => {
@@ -805,7 +813,7 @@ export default function PesertaIndex({ pesertas, status, level }: Props) {
 
                         <p className="mt-1 text-sm text-muted-foreground">
                             {pesertas.length} peserta pada filter ini
-                            {q.trim() && ` · ${filtered.length} cocok dengan pencarian`}
+                            {(q.trim() || lokasi !== 'semua') && ` · ${filtered.length} cocok dengan filter`}
                         </p>
                     </div>
 
@@ -859,6 +867,19 @@ export default function PesertaIndex({ pesertas, status, level }: Props) {
                             {levels.map(([key, label]) => (
                                 <option key={key} value={key}>
                                     {label}
+                                </option>
+                            ))}
+                        </select>
+
+                        <select
+                            value={lokasi}
+                            onChange={(e) => setLokasi(e.target.value)}
+                            className={`h-10 rounded-xl border bg-background px-3 text-sm ${focusRing}`}
+                        >
+                            <option value="semua">Semua lokasi</option>
+                            {daftarLokasi.map((l) => (
+                                <option key={l} value={l}>
+                                    {l}
                                 </option>
                             ))}
                         </select>
