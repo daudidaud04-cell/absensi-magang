@@ -8,6 +8,7 @@ use App\Models\Location;
 use App\Models\User;
 use App\Services\RekapKehadiran;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
@@ -144,6 +145,30 @@ class PesertaController extends Controller
         $user->forceFill($data)->save();
 
         return back();
+    }
+
+    /**
+     * Hapus peserta magang beserta data absensi, izin, dan file buktinya.
+     * Pembersihan data turunan ada di event `deleting` pada model User.
+     */
+    public function destroy(Request $request, User $user)
+    {
+        abort_unless($user->role === 'magang', 404);
+
+        $nama = $user->name;
+
+        // Jejak audit penghapusan
+        Log::info('SIAM: peserta dihapus', [
+            'user_id' => $user->id,
+            'nama' => $nama,
+            'email' => $user->email,
+            'oleh_admin' => $request->user()->id,
+        ]);
+
+        // Transaksi: kalau ada yang gagal, tidak ada data yang setengah terhapus
+        DB::transaction(fn () => $user->delete());
+
+        return redirect('/admin/peserta')->with('success', "Peserta {$nama} berhasil dihapus.");
     }
 
     /**

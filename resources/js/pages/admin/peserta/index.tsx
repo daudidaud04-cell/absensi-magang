@@ -1,6 +1,17 @@
 import SiamLayout from '@/components/siam/layout';
-import { Link, router } from '@inertiajs/react';
-import { CalendarDays, ChevronLeft, ChevronRight, Download, List, Pencil, Plus, Search, X } from 'lucide-react';
+import { Link, router, usePage } from '@inertiajs/react';
+import {
+    CalendarDays,
+    ChevronLeft,
+    ChevronRight,
+    Download,
+    List,
+    Pencil,
+    Plus,
+    Search,
+    Trash2,
+    X,
+} from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 
 // ======================================================
@@ -226,6 +237,92 @@ function DownloadButton({ id }: { id: number }) {
         >
             <Download className="size-3.5" />
         </a>
+    );
+}
+
+// Tombol hapus: hanya membuka modal konfirmasi
+function DeleteButton({ onClick }: { onClick: () => void }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            title="Hapus peserta"
+            aria-label="Hapus peserta"
+            className={`inline-flex h-9 items-center gap-1.5 rounded-lg border border-red-200 px-3 text-xs font-medium text-red-600 transition hover:bg-red-50 ${focusRing}`}
+        >
+            <Trash2 className="size-3.5" />
+            Hapus
+        </button>
+    );
+}
+
+// ======================================================
+// MODAL KONFIRMASI HAPUS
+// ======================================================
+
+function ConfirmDeleteModal({
+    peserta,
+    processing,
+    onConfirm,
+    onCancel,
+}: {
+    peserta: Peserta;
+    processing: boolean;
+    onConfirm: () => void;
+    onCancel: () => void;
+}) {
+    // Tutup dengan tombol Esc (kecuali sedang memproses)
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => e.key === 'Escape' && !processing && onCancel();
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [onCancel, processing]);
+
+    return (
+        <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => !processing && onCancel()}
+            role="presentation"
+        >
+            <div
+                role="alertdialog"
+                aria-modal="true"
+                aria-label="Konfirmasi hapus peserta"
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-md rounded-2xl border bg-card p-6 shadow-xl"
+            >
+                <div className="mb-4 flex size-12 items-center justify-center rounded-full bg-red-100">
+                    <Trash2 className="size-5 text-red-600" />
+                </div>
+
+                <h2 className="text-lg font-bold tracking-tight">Hapus peserta?</h2>
+
+                <p className="mt-2 text-sm text-muted-foreground">
+                    <span className="font-semibold text-foreground">{peserta.name}</span> ({peserta.email}) akan
+                    dihapus beserta seluruh data absensinya. Tindakan ini tidak dapat dibatalkan.
+                </p>
+
+                <div className="mt-6 flex justify-end gap-3">
+                    <button
+                        type="button"
+                        onClick={onCancel}
+                        disabled={processing}
+                        className={`h-9 rounded-lg border px-4 text-xs font-medium transition hover:bg-muted disabled:opacity-50 ${focusRing}`}
+                    >
+                        Batal
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={onConfirm}
+                        disabled={processing}
+                        className={`h-9 rounded-lg bg-red-600 px-4 text-xs font-semibold text-white transition hover:bg-red-700 disabled:opacity-50 ${focusRing}`}
+                    >
+                        {processing ? 'Menghapus…' : 'Ya, hapus'}
+                    </button>
+                </div>
+            </div>
+        </div>
     );
 }
 
@@ -566,42 +663,47 @@ function DetailModal({ peserta, onClose }: { peserta: Peserta; onClose: () => vo
                                             Tidak ada catatan untuk filter ini.
                                         </p>
                                     ) : (
-                                    <>
-                                    <p className="text-xs text-muted-foreground">
-                                        Total <span className="font-semibold text-foreground">{rows.length}</span> hari
-                                        {jenis !== 'semua' && ` (${jenis})`}
-                                    </p>
+                                        <>
+                                            <p className="text-xs text-muted-foreground">
+                                                Total <span className="font-semibold text-foreground">{rows.length}</span>{' '}
+                                                hari
+                                                {jenis !== 'semua' && ` (${jenis})`}
+                                            </p>
 
-                                    <ul className="divide-y rounded-xl border">
-                                        {rows.map((d, i) => (
-                                            <li key={d.tanggal} className="flex items-start gap-3 p-3">
-                                                <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground tabular-nums">
-                                                    {rows.length - i}
-                                                </span>
+                                            <ul className="divide-y rounded-xl border">
+                                                {rows.map((d, i) => (
+                                                    <li key={d.tanggal} className="flex items-start gap-3 p-3">
+                                                        <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground tabular-nums">
+                                                            {rows.length - i}
+                                                        </span>
 
-                                                <div className="min-w-0 flex-1">
-                                                    <p className="text-sm font-medium">
-                                                        {d.hari}, {fmtDate(d.tanggal)}
-                                                    </p>
+                                                        <div className="min-w-0 flex-1">
+                                                            <p className="text-sm font-medium">
+                                                                {d.hari}, {fmtDate(d.tanggal)}
+                                                            </p>
 
-                                                    {(d.masuk || d.pulang) && (
-                                                        <p className="text-xs text-muted-foreground tabular-nums">
-                                                            Masuk {d.masuk || '–'} · Pulang {d.pulang || '–'}
-                                                        </p>
-                                                    )}
+                                                            {(d.masuk || d.pulang) && (
+                                                                <p className="text-xs text-muted-foreground tabular-nums">
+                                                                    Masuk {d.masuk || '–'} · Pulang {d.pulang || '–'}
+                                                                </p>
+                                                            )}
 
-                                                    {d.catatan && <p className="mt-0.5 text-xs text-muted-foreground">{d.catatan}</p>}
-                                                </div>
+                                                            {d.catatan && (
+                                                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                                                    {d.catatan}
+                                                                </p>
+                                                            )}
+                                                        </div>
 
-                                                <span
-                                                    className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${jenisBadge[d.jenis]}`}
-                                                >
-                                                    {d.status}
-                                                </span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                                                        </>
+                                                        <span
+                                                            className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium capitalize ${jenisBadge[d.jenis]}`}
+                                                        >
+                                                            {d.status}
+                                                        </span>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </>
                                     )}
                                 </>
                             )}
@@ -637,9 +739,13 @@ function DetailModal({ peserta, onClose }: { peserta: Peserta; onClose: () => vo
 // ======================================================
 
 export default function PesertaIndex({ pesertas, status, level }: Props) {
+    const { flash } = usePage<{ flash?: { success?: string } }>().props;
+
     const [q, setQ] = useState('');
     const [page, setPage] = useState(1);
     const [detail, setDetail] = useState<Peserta | null>(null);
+    const [hapus, setHapus] = useState<Peserta | null>(null);
+    const [deleting, setDeleting] = useState(false);
 
     // Kembali ke halaman 1 saat pencarian atau filter berubah
     useEffect(() => {
@@ -666,9 +772,33 @@ export default function PesertaIndex({ pesertas, status, level }: Props) {
     // Export membawa filter yang sedang aktif (tab, jenjang, dan pencarian)
     const exportUrl = `/admin/peserta/export?${new URLSearchParams({ status, level, q: q.trim() }).toString()}`;
 
+    // Kirim permintaan hapus setelah admin menekan "Ya, hapus"
+    const konfirmasiHapus = () => {
+        if (!hapus) return;
+
+        router.delete(`/admin/peserta/${hapus.id}`, {
+            preserveScroll: true,
+            onStart: () => setDeleting(true),
+            onFinish: () => {
+                setDeleting(false);
+                setHapus(null);
+            },
+        });
+    };
+
     return (
         <SiamLayout title="Peserta Magang">
             <div className="@container space-y-5">
+                {/* PESAN SUKSES */}
+                {flash?.success && (
+                    <div
+                        role="status"
+                        className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
+                    >
+                        {flash.success}
+                    </div>
+                )}
+
                 {/* TOOLBAR */}
                 <div className="flex flex-col gap-4 rounded-2xl border bg-card p-5 shadow-sm @3xl:flex-row @3xl:items-center @3xl:justify-between">
                     <div className="min-w-0">
@@ -816,6 +946,8 @@ export default function PesertaIndex({ pesertas, status, level }: Props) {
                                                 <DownloadButton id={p.id} />
 
                                                 <EditButton id={p.id} />
+
+                                                <DeleteButton onClick={() => setHapus(p)} />
                                             </div>
                                         </div>
                                     </li>
@@ -900,6 +1032,8 @@ export default function PesertaIndex({ pesertas, status, level }: Props) {
                                                         <DownloadButton id={p.id} />
 
                                                         <EditButton id={p.id} />
+
+                                                        <DeleteButton onClick={() => setHapus(p)} />
                                                     </div>
                                                 </td>
                                             </tr>
@@ -948,6 +1082,15 @@ export default function PesertaIndex({ pesertas, status, level }: Props) {
             </div>
 
             {detail && <DetailModal peserta={detail} onClose={() => setDetail(null)} />}
+
+            {hapus && (
+                <ConfirmDeleteModal
+                    peserta={hapus}
+                    processing={deleting}
+                    onConfirm={konfirmasiHapus}
+                    onCancel={() => setHapus(null)}
+                />
+            )}
         </SiamLayout>
     );
 }

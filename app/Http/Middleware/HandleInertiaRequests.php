@@ -41,6 +41,10 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            // BARU: pesan flash (dipakai untuk notifikasi "berhasil dihapus")
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }

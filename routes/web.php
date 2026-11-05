@@ -60,6 +60,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/peserta/{user}/edit', [Admin\PesertaController::class, 'edit']);
         Route::put('/peserta/{user}', [Admin\PesertaController::class, 'update']);
         Route::patch('/peserta/{user}/sertifikat', [Admin\PesertaController::class, 'sertifikat']);
+        Route::delete('/peserta/{user}', [Admin\PesertaController::class, 'destroy']); // BARU
 
         Route::get('/lokasi', [Admin\LocationController::class, 'index']);
         Route::post('/lokasi', [Admin\LocationController::class, 'store']);

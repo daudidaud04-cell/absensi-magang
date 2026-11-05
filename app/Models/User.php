@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Models;
+
 use App\Models\Concerns\HasWorkSchedule;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -11,6 +12,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * @property int $id
@@ -77,6 +80,33 @@ class User extends Authenticatable
     protected $appends = ['status_magang'];
 
     /**
+     * Saat peserta magang dihapus, bersihkan data turunannya
+     * (absensi, izin) beserta folder selfie dan bukti izin miliknya.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (User $user) {
+            if ($user->role !== 'magang') {
+                return;
+            }
+
+            $id = $user->id;
+
+            $user->attendances()->delete();
+            $user->leaveRequests()->delete();
+
+            // Folder dihapus setelah transaksi database berhasil.
+            // Struktur file: selfies/{user_id}/... dan proofs/{user_id}/...
+            DB::afterCommit(function () use ($id) {
+                $disk = Storage::disk('local');
+
+                $disk->deleteDirectory("selfies/{$id}");
+                $disk->deleteDirectory("proofs/{$id}");
+            });
+        });
+    }
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -108,9 +138,9 @@ class User extends Authenticatable
     }
 
     public function division(): BelongsTo
-{
-    return $this->belongsTo(Division::class);
-}
+    {
+        return $this->belongsTo(Division::class);
+    }
 
     public function isAdmin(): bool
     {
