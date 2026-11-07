@@ -1,8 +1,10 @@
 import SiamLayout from '@/components/siam/layout';
 import { fieldCls, PageHeader, Panel, primaryBtn } from '@/components/siam/kit';
+import SearchableSelect from '@/components/siam/searchable-select';
 import { Field } from '@/components/siam/ui';
 import { useForm } from '@inertiajs/react';
 import { Save } from 'lucide-react';
+import { useMemo } from 'react';
 
 const statusOptions = [
     ['hadir', 'Hadir'],
@@ -14,7 +16,14 @@ const statusOptions = [
 
 const areaCls = 'w-full rounded-xl border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/60';
 
-export default function Manual({ pesertas }: { pesertas: { id: number; name: string }[] }) {
+type Peserta = {
+    id: number;
+    name: string;
+    email: string | null;
+    instansi: string | null;
+};
+
+export default function Manual({ pesertas }: { pesertas: Peserta[] }) {
     const form = useForm({
         user_id: '',
         date: new Date().toLocaleDateString('en-CA'), // YYYY-MM-DD, waktu lokal
@@ -29,6 +38,17 @@ export default function Manual({ pesertas }: { pesertas: { id: number; name: str
         (k: keyof typeof form.data) =>
         (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
             form.setData(k, e.target.value);
+
+    // Email dan sekolah ikut ditampilkan supaya nama kembar tidak tertukar
+    const options = useMemo(
+        () =>
+            pesertas.map((p) => ({
+                value: p.id,
+                label: p.name,
+                hint: [p.email, p.instansi].filter(Boolean).join(' · '),
+            })),
+        [pesertas],
+    );
 
     return (
         <SiamLayout title="Absen Manual">
@@ -47,14 +67,12 @@ export default function Manual({ pesertas }: { pesertas: { id: number; name: str
                         className="grid gap-4 sm:grid-cols-2"
                     >
                         <Field label="Peserta" error={form.errors.user_id}>
-                            <select className={fieldCls} value={form.data.user_id} onChange={set('user_id')}>
-                                <option value="">-- pilih --</option>
-                                {pesertas.map((p) => (
-                                    <option key={p.id} value={p.id}>
-                                        {p.name}
-                                    </option>
-                                ))}
-                            </select>
+                            <SearchableSelect
+                                options={options}
+                                value={form.data.user_id}
+                                onChange={(v) => form.setData('user_id', v)}
+                                placeholder="Ketik nama peserta..."
+                            />
                         </Field>
 
                         <Field label="Tanggal" error={form.errors.date}>

@@ -14,7 +14,9 @@ class ManualController extends Controller
     public function create()
     {
         return Inertia::render('admin/manual', [
-            'pesertas' => User::where('role', 'magang')->orderBy('name')->get(['id', 'name']),
+            'pesertas' => User::where('role', 'magang')
+                ->orderBy('name')
+                ->get(['id', 'name', 'email', 'instansi']),
         ]);
     }
 

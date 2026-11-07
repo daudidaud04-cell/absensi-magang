@@ -5,13 +5,13 @@ namespace App\Exports\Sheets;
 use App\Exports\Support\Tampilan;
 use App\Models\User;
 use Carbon\Carbon;
-use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithColumnWidths;
 use Maatwebsite\Excel\Concerns\WithCustomStartCell;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\WithStrictNullComparison;
 use Maatwebsite\Excel\Concerns\WithStyles;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
@@ -21,7 +21,11 @@ class RekapSheet implements FromCollection, WithHeadings, WithTitle, WithStyles,
     private const LAST  = 'P';
     private const FIRST = 5;   // baris data pertama (header di baris 4)
 
-    public function __construct(private Collection $users, private Collection $hitung) {}
+    public function __construct(
+        private Collection $users,
+        private Collection $hitung,
+        private ?string $periode = null,
+    ) {}
 
     public function title(): string
     {
@@ -68,10 +72,10 @@ class RekapSheet implements FromCollection, WithHeadings, WithTitle, WithStyles,
     }
 
     public function columnWidths(): array
-        {
-            return ['A' => 6, 'B' => 32, 'C' => 30, 'D' => 12, 'E' => 30, 'F' => 14, 'G' => 12, 'H' => 13,
-                    'I' => 13, 'J' => 13, 'K' => 10, 'L' => 12, 'M' => 9, 'N' => 9, 'O' => 9, 'P' => 15];
-        }
+    {
+        return ['A' => 6, 'B' => 32, 'C' => 30, 'D' => 12, 'E' => 30, 'F' => 14, 'G' => 12, 'H' => 13,
+                'I' => 13, 'J' => 13, 'K' => 10, 'L' => 12, 'M' => 9, 'N' => 9, 'O' => 9, 'P' => 15];
+    }
 
     public function columnFormats(): array
     {
@@ -86,7 +90,12 @@ class RekapSheet implements FromCollection, WithHeadings, WithTitle, WithStyles,
         $persen = $this->users->map(fn ($u) => $this->hitung[$u->id]['persen'])->filter(fn ($p) => $p !== null);
         $rata   = $persen->isEmpty() ? '-' : round($persen->avg()) . '%';
 
-        Tampilan::judul($sheet, self::LAST, 'REKAP KEHADIRAN PESERTA MAGANG', 'Sistem Informasi Absensi Magang');
+        Tampilan::judul(
+            $sheet,
+            self::LAST,
+            'REKAP KEHADIRAN PESERTA MAGANG',
+            $this->periode ?? 'Sistem Informasi Absensi Magang'
+        );
 
         $sheet->mergeCells('A3:' . self::LAST . '3');
         $sheet->setCellValue('A3', "Jumlah peserta: {$n}   |   Rata-rata kehadiran: {$rata}   |   Dicetak: " . now()->format('d/m/Y H:i'));
@@ -117,7 +126,6 @@ class RekapSheet implements FromCollection, WithHeadings, WithTitle, WithStyles,
             }
         }
 
-     
         $sheet->setAutoFilter('A4:' . self::LAST . $last);
         Tampilan::siapCetak($sheet, 4);
 

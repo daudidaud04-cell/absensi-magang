@@ -99,6 +99,12 @@ const certStyle: Record<string, string> = {
     sudah_diserahkan: 'border-green-200 bg-green-50 text-green-800',
 };
 
+const certLabel: Record<string, string> = {
+    belum_diberikan: 'Belum diberikan',
+    siap_diambil: 'Siap diambil',
+    sudah_diserahkan: 'Sudah diserahkan',
+};
+
 const jenisBadge: Record<string, string> = {
     hadir: 'bg-green-100 text-green-800 ring-1 ring-green-200',
     terlambat: 'bg-amber-100 text-amber-800 ring-1 ring-amber-200',
@@ -168,6 +174,30 @@ function Avatar({ name }: { name: string }) {
         <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
             {name.charAt(0).toUpperCase()}
         </span>
+    );
+}
+
+// Nama peserta yang bisa diklik untuk membuka detail
+function NamaButton({ p, onClick }: { p: Peserta; onClick: () => void }) {
+    return (
+        <button
+            type="button"
+            onClick={onClick}
+            title="Klik untuk melihat detail peserta"
+            className={`text-left font-medium break-words underline-offset-2 transition hover:text-primary hover:underline ${focusRing}`}
+        >
+            {p.name}
+        </button>
+    );
+}
+
+// Satu baris info profil di dalam modal
+function Info({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="min-w-0">
+            <dt className="text-xs text-muted-foreground">{label}</dt>
+            <dd className="font-medium break-words capitalize-first">{value}</dd>
+        </div>
     );
 }
 
@@ -589,6 +619,33 @@ function DetailModal({ peserta, onClose }: { peserta: Peserta; onClose: () => vo
 
                 {/* Isi */}
                 <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5">
+                    {/* Profil peserta (dari data yang sudah ada di tabel, tanpa request tambahan) */}
+                    <dl className="grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl border bg-muted/40 p-4 text-sm sm:grid-cols-3">
+                        <Info
+                            label="Jenjang"
+                            value={
+                                peserta.education_level
+                                    ? (levelLabel[peserta.education_level] ?? peserta.education_level)
+                                    : '–'
+                            }
+                        />
+                        <Info label="Penempatan" value={peserta.location ?? '–'} />
+                        <div className="min-w-0">
+                            <dt className="text-xs text-muted-foreground">Status magang</dt>
+                            <dd className="mt-0.5">
+                                <StatusBadge value={peserta.status_magang} />
+                            </dd>
+                        </div>
+                        <div className="col-span-2 sm:col-span-3">
+                            <Info label="Asal sekolah/kampus" value={peserta.instansi ?? '–'} />
+                        </div>
+                        <Info
+                            label="Periode"
+                            value={`${fmtDate(peserta.start_date)} s.d. ${fmtDate(peserta.end_date)}`}
+                        />
+                        <Info label="Sertifikat" value={certLabel[peserta.certificate_status] ?? '–'} />
+                    </dl>
+
                     {error && (
                         <p className="py-8 text-center text-sm text-red-600">
                             Gagal memuat data. Tutup lalu coba lagi.
@@ -711,14 +768,24 @@ function DetailModal({ peserta, onClose }: { peserta: Peserta; onClose: () => vo
                 </div>
 
                 {/* Footer */}
-                <div className="flex items-center justify-between gap-3 border-t p-4">
-                    <a
-                        href={`/admin/peserta/${peserta.id}/export`}
-                        className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition hover:bg-muted ${focusRing}`}
-                    >
-                        <Download className="size-3.5" />
-                        Unduh laporan lengkap
-                    </a>
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t p-4">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <a
+                            href={`/admin/peserta/${peserta.id}/export`}
+                            className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition hover:bg-muted ${focusRing}`}
+                        >
+                            <Download className="size-3.5" />
+                            Unduh laporan lengkap
+                        </a>
+
+                        <Link
+                            href={`/admin/peserta/${peserta.id}/edit`}
+                            className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-medium transition hover:bg-muted ${focusRing}`}
+                        >
+                            <Pencil className="size-3.5" />
+                            Edit
+                        </Link>
+                    </div>
 
                     <button
                         type="button"
@@ -914,7 +981,7 @@ export default function PesertaIndex({ pesertas, status, level }: Props) {
                                                         <span className="mr-1.5 text-muted-foreground tabular-nums">
                                                             {start + i + 1}.
                                                         </span>
-                                                        {p.name}
+                                                        <NamaButton p={p} onClick={() => setDetail(p)} />
                                                     </p>
 
                                                     <p className="truncate text-xs text-muted-foreground">{p.email}</p>
@@ -1004,7 +1071,7 @@ export default function PesertaIndex({ pesertas, status, level }: Props) {
                                                         <Avatar name={p.name} />
 
                                                         <div className="min-w-0">
-                                                            <p className="font-medium">{p.name}</p>
+                                                            <NamaButton p={p} onClick={() => setDetail(p)} />
 
                                                             <p className="text-xs text-muted-foreground">{p.email}</p>
                                                         </div>

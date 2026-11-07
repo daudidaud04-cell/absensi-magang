@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Exports\RekapBulananExport;
 use App\Http\Controllers\Controller;
 use App\Models\Division;
 use App\Models\Location;
@@ -11,6 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
+use Maatwebsite\Excel\Facades\Excel;
 
 class RekapController extends Controller
 {
@@ -32,26 +34,17 @@ class RekapController extends Controller
         ]);
     }
 
-        public function export(Request $request)
+    public function export(Request $request)
     {
         [$month, $start, $end] = $this->period($request);
-        $rows = $this->build($start, $end, $this->filters($request));
 
-        return response()->streamDownload(function () use ($rows) {
-            $out = fopen('php://output', 'w');
-            fwrite($out, "\xEF\xBB\xBF"); // BOM supaya Excel membaca UTF-8
+        $users  = $this->users($start, $end, $this->filters($request));
+        $hitung = RekapKehadiran::untukPeserta($users, $start, $end);
 
-            // Titik koma agar terbuka rapi di Excel berlokal Indonesia
-            fputcsv($out, ['No', 'Nama', 'Email', 'Asal', 'Lokasi', 'Divisi', 'Hari Kerja', 'Hari Efektif',
-                'Hadir', 'Terlambat', 'Izin', 'Sakit', 'Alpha', 'Kehadiran (%)'], ';');
-
-            foreach ($rows->values() as $i => $r) {
-                fputcsv($out, [$i + 1, $r['name'], $r['email'], $r['instansi'], $r['location'], $r['division'],
-                    $r['workdays'], $r['efektif'], $r['hadir'], $r['terlambat'], $r['izin'], $r['sakit'], $r['alpha'], $r['persen']], ';');
-            }
-
-            fclose($out);
-        }, "rekap-absensi-{$month}.csv", ['Content-Type' => 'text/csv; charset=UTF-8']);
+        return Excel::download(
+            new RekapBulananExport($users, $hitung, $start, $end),
+            "rekap-absensi-{$month}.xlsx"
+        );
     }
 
     private function period(Request $request): array
@@ -71,13 +64,13 @@ class RekapController extends Controller
         ];
     }
 
-    private function build(Carbon $start, Carbon $end, array $f): Collection
+    /** Peserta yang masa magangnya beririsan dengan bulan ini */
+    private function users(Carbon $start, Carbon $end, array $f): Collection
     {
         $from = $start->toDateString();
         $to = $end->toDateString();
 
-        // Peserta yang masa magangnya beririsan dengan bulan ini
-        $users = User::where('role', 'magang')
+        return User::where('role', 'magang')
             ->whereDate('start_date', '<=', $to)
             ->whereDate('end_date', '>=', $from)
             ->when($f['lokasi'], fn ($q, $v) => $q->where('location_id', $v))
@@ -85,6 +78,11 @@ class RekapController extends Controller
             ->with(['location:id,name', 'division:id,name'])
             ->orderBy('name')
             ->get();
+    }
+
+    private function build(Carbon $start, Carbon $end, array $f): Collection
+    {
+        $users = $this->users($start, $end, $f);
 
         // Rumus yang sama dengan halaman Peserta dan Excel, dibatasi ke bulan ini
         $hitung = RekapKehadiran::untukPeserta($users, $start, $end);
