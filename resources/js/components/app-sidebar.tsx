@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import {
+    Award,
     CalendarClock,
     CalendarDays,
     ClipboardCheck,
@@ -32,6 +33,7 @@ const entries: NavEntry[] = [
         icon: Database,
         items: [
             { title: 'Peserta', href: '/admin/peserta', icon: Users },
+            { title: 'Sertifikat', href: '/admin/sertifikat', icon: Award },
             { title: 'Jadwal Kerja', href: '/admin/jadwal', icon: CalendarClock },
             { title: 'Lokasi', href: '/admin/lokasi', icon: MapPin },
         ],

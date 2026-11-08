@@ -59,8 +59,11 @@ Route::middleware('auth')->group(function () {
         Route::post('/peserta', [Admin\PesertaController::class, 'store']);
         Route::get('/peserta/{user}/edit', [Admin\PesertaController::class, 'edit']);
         Route::put('/peserta/{user}', [Admin\PesertaController::class, 'update']);
-        Route::patch('/peserta/{user}/sertifikat', [Admin\PesertaController::class, 'sertifikat']);
         Route::delete('/peserta/{user}', [Admin\PesertaController::class, 'destroy']); // BARU
+
+        Route::get('/sertifikat', [Admin\SertifikatController::class, 'index']);
+        Route::put('/sertifikat/{user}', [Admin\SertifikatController::class, 'simpan']);
+        Route::delete('/sertifikat/{user}', [Admin\SertifikatController::class, 'destroy']);
 
         Route::get('/lokasi', [Admin\LocationController::class, 'index']);
         Route::post('/lokasi', [Admin\LocationController::class, 'store']);

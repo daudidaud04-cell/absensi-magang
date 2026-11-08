@@ -21,7 +21,7 @@ class PesertaController extends Controller
         $today = today()->toDateString();
 
         $query = User::where('role', 'magang')->orderBy('name')
-            ->with('location:id,name');
+                ->with(['location:id,name', 'serahTerima:id,user_id,tanggal_diambil']);
 
         if ($status === 'aktif') {
             $query->where(fn ($q) => $q->whereNull('end_date')->orWhereDate('end_date', '>=', $today));
@@ -49,7 +49,8 @@ class PesertaController extends Controller
                 'start_date' => $u->start_date?->toDateString(),
                 'end_date' => $u->end_date?->toDateString(),
                 'status_magang' => $u->status_magang,
-                'certificate_status' => $u->certificate_status,
+                'certificate_status' => $u->serahTerima ? 'sudah_diserahkan' : 'belum_diberikan',
+                'tanggal_diambil' => $u->serahTerima?->tanggal_diambil?->toDateString(),
                 'persen' => $rekap[$u->id]['persen'],
             ]),
         ]);

@@ -1,5 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import { Camera, Check, ChevronRight, Clock, Minus, X } from 'lucide-react';
+import { Award, Camera, Check, ChevronRight, Clock, Minus, X } from 'lucide-react';
 import { fmtTime, pBtn, pCard, StatusPill, useClock } from '@/components/siam/peserta-ui';
 import type { AttendanceX } from '@/components/siam/peserta-ui';
 import type { Office } from '@/components/siam/types';
@@ -22,6 +22,13 @@ type Props = {
     blocked: string | null;
     week: WeekDay[];
     recent: AttendanceX[];
+    sertifikat: {
+        sudah_diambil: boolean;
+        tanggal_diambil: string | null;
+        diambil_oleh: string | null;
+        hubungan_pengambil: 'peserta' | 'perwakilan' | null;
+        diserahkan_oleh: string | null;
+    };
 };
 
 /** Alamat Riwayat yang langsung membuka detail satu tanggal */
@@ -99,7 +106,74 @@ const legenda: [string, string][] = [
     ['bg-neutral-200', 'Libur'],
 ];
 
-export default function Beranda({ profile, office, today, blocked, week, recent }: Props) {
+const fmtTanggal = (s: string | null) =>
+    s ? new Date(`${s}T00:00:00`).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '–';
+
+function KartuSertifikat({
+    sertifikat,
+    statusMagang,
+    endDate,
+}: {
+    sertifikat: Props['sertifikat'];
+    statusMagang: string;
+    endDate: string | null;
+}) {
+    const selesai = statusMagang === 'alumni';
+
+    return (
+        <section className={pCard}>
+            <div className="mb-3 flex items-center justify-between gap-2">
+                <h2 className="flex items-center gap-2 font-semibold">
+                    <Award className="h-5 w-5 text-orange-600" />
+                    Sertifikat Saya
+                </h2>
+
+                {sertifikat.sudah_diambil ? (
+                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
+                        Sudah diambil
+                    </span>
+                ) : (
+                    <span className="rounded-full bg-neutral-100 px-3 py-1 text-xs font-medium text-neutral-600">
+                        Belum diambil
+                    </span>
+                )}
+            </div>
+
+            {sertifikat.sudah_diambil ? (
+                <dl className="space-y-2 text-sm">
+                    <div className="flex justify-between gap-3">
+                        <dt className="text-neutral-500">Tanggal diambil</dt>
+                        <dd className="text-right font-medium">{fmtTanggal(sertifikat.tanggal_diambil)}</dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                        <dt className="text-neutral-500">Diambil oleh</dt>
+                        <dd className="text-right font-medium">
+                            {sertifikat.diambil_oleh}
+                            <span className="block text-xs font-normal text-neutral-500">
+                                {sertifikat.hubungan_pengambil === 'perwakilan' ? 'Perwakilan' : 'Peserta sendiri'}
+                            </span>
+                        </dd>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                        <dt className="text-neutral-500">Diserahkan oleh</dt>
+                        <dd className="text-right font-medium">{sertifikat.diserahkan_oleh ?? '–'}</dd>
+                    </div>
+                </dl>
+            ) : selesai ? (
+                <p className="text-sm text-neutral-600">
+                    Magang Anda sudah selesai. Silakan hubungi admin untuk pengambilan sertifikat.
+                </p>
+            ) : (
+                <p className="text-sm text-neutral-600">
+                    Sertifikat dapat diambil setelah magang selesai
+                    {endDate && ` (${fmtTanggal(endDate)})`}.
+                </p>
+            )}
+        </section>
+    );
+}
+
+export default function Beranda({ profile, office, today, blocked, week, recent, sertifikat }: Props) {
     const now = useClock();
     const time = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
     const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
@@ -163,7 +237,7 @@ export default function Beranda({ profile, office, today, blocked, week, recent 
                     </p>
                 </div>
 
-                {/* HP: satu kolom. Komputer: kiri (absen + ringkasan), kanan (riwayat) */}
+                {/* HP: satu kolom. Komputer: kiri (absen + ringkasan), kanan (riwayat + sertifikat) */}
                 <div className="grid gap-4 lg:grid-cols-12 lg:items-start lg:gap-6">
                     <div className="space-y-4 lg:col-span-7 lg:space-y-6">
                         <section className={pCard}>
@@ -239,7 +313,7 @@ export default function Beranda({ profile, office, today, blocked, week, recent 
                         </section>
                     </div>
 
-                    <div className="lg:col-span-5">
+                    <div className="space-y-4 lg:col-span-5 lg:space-y-6">
                         <section className={pCard}>
                             <div className="mb-1 flex items-center justify-between">
                                 <h2 className="font-semibold">Riwayat Absen</h2>
@@ -290,6 +364,12 @@ export default function Beranda({ profile, office, today, blocked, week, recent 
                                 {!recent.length && <li className="py-3 text-sm text-neutral-500">Belum ada riwayat.</li>}
                             </ul>
                         </section>
+
+                        <KartuSertifikat
+                            sertifikat={sertifikat}
+                            statusMagang={profile.status_magang}
+                            endDate={profile.end_date}
+                        />
                     </div>
                 </div>
             </div>

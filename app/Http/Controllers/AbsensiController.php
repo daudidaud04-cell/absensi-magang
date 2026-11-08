@@ -21,6 +21,9 @@ class AbsensiController extends Controller
         $today = today();
         $office = OfficeSetting::first();
 
+        // Data serah terima sertifikat milik peserta yang sedang login
+                $serahTerima = $user->serahTerima;
+
         $todayRow = Attendance::query()
             ->where('user_id', $user->id)
             ->whereDate('date', $today->toDateString())
@@ -76,6 +79,13 @@ class AbsensiController extends Controller
             'blocked' => $svc->blockedReason($user),
             'week' => $week,
             'recent' => $recent,
+            'sertifikat' => [
+                'sudah_diambil' => $serahTerima !== null,
+                'tanggal_diambil' => $serahTerima?->tanggal_diambil?->toDateString(),
+                'diambil_oleh' => $serahTerima?->diambil_oleh,
+                'hubungan_pengambil' => $serahTerima?->hubungan_pengambil,
+                'diserahkan_oleh' => $serahTerima?->diserahkan_nama,
+            ],
         ]);
     }
 

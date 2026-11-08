@@ -29,6 +29,7 @@ type Peserta = {
     end_date: string | null;
     status_magang: string;
     certificate_status: string;
+    tanggal_diambil: string | null;
     persen: number | null;
 };
 
@@ -94,15 +95,15 @@ const statusBadge: Record<string, string> = {
 };
 
 const certStyle: Record<string, string> = {
-    belum_diberikan: 'border-slate-200 bg-slate-50 text-slate-700',
-    siap_diambil: 'border-amber-200 bg-amber-50 text-amber-800',
-    sudah_diserahkan: 'border-green-200 bg-green-50 text-green-800',
+    belum_diberikan: 'bg-amber-100 text-amber-800 ring-1 ring-amber-200',
+    siap_diambil: 'bg-amber-100 text-amber-800 ring-1 ring-amber-200',
+    sudah_diserahkan: 'bg-green-100 text-green-800 ring-1 ring-green-200',
 };
 
 const certLabel: Record<string, string> = {
-    belum_diberikan: 'Belum diberikan',
-    siap_diambil: 'Siap diambil',
-    sudah_diserahkan: 'Sudah diserahkan',
+    belum_diberikan: 'Belum diambil',
+    siap_diambil: 'Belum diambil',
+    sudah_diserahkan: 'Sudah diambil',
 };
 
 const jenisBadge: Record<string, string> = {
@@ -223,23 +224,24 @@ function Kehadiran({ persen, onClick }: { persen: number | null; onClick: () => 
     );
 }
 
-function CertSelect({ p }: { p: Peserta }) {
+// Badge status sertifikat (hanya baca). Klik untuk mengelola di halaman Sertifikat.
+function CertBadge({ p }: { p: Peserta }) {
     return (
-        <select
-            value={p.certificate_status}
-            onChange={(e) =>
-                router.patch(
-                    `/admin/peserta/${p.id}/sertifikat`,
-                    { certificate_status: e.target.value },
-                    { preserveScroll: true },
-                )
-            }
-            className={`h-9 rounded-lg border px-2.5 text-xs font-medium ${focusRing} ${certStyle[p.certificate_status] ?? certStyle.belum_diberikan}`}
+        <Link
+            href="/admin/sertifikat"
+            title="Kelola di halaman Sertifikat"
+            className={`inline-block rounded-lg ${focusRing}`}
         >
-            <option value="belum_diberikan">Belum diberikan</option>
-            <option value="siap_diambil">Siap diambil</option>
-            <option value="sudah_diserahkan">Sudah diserahkan</option>
-        </select>
+            <span
+                className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap ${certStyle[p.certificate_status] ?? certStyle.belum_diberikan}`}
+            >
+                {certLabel[p.certificate_status] ?? 'Belum diambil'}
+            </span>
+
+            {p.tanggal_diambil && (
+                <span className="mt-0.5 block text-xs text-muted-foreground">{fmtDate(p.tanggal_diambil)}</span>
+            )}
+        </Link>
     );
 }
 
@@ -1027,7 +1029,7 @@ export default function PesertaIndex({ pesertas, status, level }: Props) {
                                         </dl>
 
                                         <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
-                                            <CertSelect p={p} />
+                                            <CertBadge p={p} />
 
                                             <div className="flex items-center gap-2">
                                                 <DownloadButton id={p.id} />
@@ -1107,7 +1109,7 @@ export default function PesertaIndex({ pesertas, status, level }: Props) {
                                                 </td>
 
                                                 <td className="px-3 py-3">
-                                                    <CertSelect p={p} />
+                                                    <CertBadge p={p} />
                                                 </td>
 
                                                 <td className="py-3">
