@@ -27,6 +27,7 @@ export default function Manual({ pesertas }: { pesertas: Peserta[] }) {
     const form = useForm({
         user_id: '',
         date: new Date().toLocaleDateString('en-CA'), // YYYY-MM-DD, waktu lokal
+        date_end: '',
         status: 'hadir',
         time_in: '',
         time_out: '',
@@ -34,10 +35,26 @@ export default function Manual({ pesertas }: { pesertas: Peserta[] }) {
         admin_notes: '',
     });
 
+    // Jam hanya relevan untuk hadir/terlambat
+    const needsTime = form.data.status === 'hadir' || form.data.status === 'terlambat';
+    const isRange = form.data.date_end !== '' && form.data.date_end > form.data.date;
+
     const set =
         (k: keyof typeof form.data) =>
         (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
             form.setData(k, e.target.value);
+
+    const onStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const status = e.target.value;
+        const keepTime = status === 'hadir' || status === 'terlambat';
+        form.setData((d) => ({ ...d, status, ...(keepTime ? {} : { time_in: '', time_out: '' }) }));
+    };
+
+    const onDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const date = e.target.value;
+        // Tanggal akhir tidak boleh lebih awal dari tanggal mulai
+        form.setData((d) => ({ ...d, date, date_end: d.date_end && d.date_end < date ? '' : d.date_end }));
+    };
 
     // Email dan sekolah ikut ditampilkan supaya nama kembar tidak tertukar
     const options = useMemo(
@@ -50,6 +67,15 @@ export default function Manual({ pesertas }: { pesertas: Peserta[] }) {
         [pesertas],
     );
 
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        form.post('/admin/manual', {
+            preserveScroll: true,
+            // Semua dikosongkan kecuali tanggal, supaya admin bisa langsung input peserta berikutnya
+            onSuccess: () => form.reset('user_id', 'date_end', 'status', 'time_in', 'time_out', 'logbook', 'admin_notes'),
+        });
+    };
+
     return (
         <SiamLayout title="Absen Manual">
             <div className="@container space-y-5">
@@ -59,45 +85,73 @@ export default function Manual({ pesertas }: { pesertas: Peserta[] }) {
                 />
 
                 <Panel title="Override Admin">
-                    <form
-                        onSubmit={(e) => {
-                            e.preventDefault();
-                            form.post('/admin/manual');
-                        }}
-                        className="grid gap-4 sm:grid-cols-2"
-                    >
-                        <Field label="Peserta" error={form.errors.user_id}>
-                            <SearchableSelect
-                                options={options}
-                                value={form.data.user_id}
-                                onChange={(v) => form.setData('user_id', v)}
-                                placeholder="Ketik nama peserta..."
+                    <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
+                        <div className="sm:col-span-2">
+                            <Field label="Peserta" error={form.errors.user_id}>
+                                <SearchableSelect
+                                    options={options}
+                                    value={form.data.user_id}
+                                    onChange={(v) => form.setData('user_id', v)}
+                                    placeholder="Ketik nama peserta..."
+                                />
+                            </Field>
+                        </div>
+
+                        <Field label="Tanggal" error={form.errors.date}>
+                            <input type="date" className={fieldCls} value={form.data.date} onChange={onDateChange} required />
+                        </Field>
+
+                        <Field label="Sampai tanggal (opsional)" error={form.errors.date_end}>
+                            <input
+                                type="date"
+                                className={fieldCls}
+                                value={form.data.date_end}
+                                min={form.data.date}
+                                onChange={set('date_end')}
                             />
                         </Field>
 
-                        <Field label="Tanggal" error={form.errors.date}>
-                            <input type="date" className={fieldCls} value={form.data.date} onChange={set('date')} />
-                        </Field>
+                        <div className="sm:col-span-2">
+                            <p className="text-xs text-muted-foreground">
+                                {isRange
+                                    ? 'Satu catatan dibuat per hari kerja (maks. 31 hari). Hari libur, hari non-kerja, dan tanggal yang sudah punya absen akan dilewati, tidak ditimpa.'
+                                    : 'Kosongkan "Sampai tanggal" untuk satu hari saja. Jika tanggal itu sudah punya absen, datanya akan diganti.'}
+                            </p>
+                        </div>
 
-                        <Field label="Status" error={form.errors.status}>
-                            <select className={fieldCls} value={form.data.status} onChange={set('status')}>
-                                {statusOptions.map(([value, label]) => (
-                                    <option key={value} value={value}>
-                                        {label}
-                                    </option>
-                                ))}
-                            </select>
-                        </Field>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <Field label="Jam masuk" error={form.errors.time_in}>
-                                <input type="time" className={fieldCls} value={form.data.time_in} onChange={set('time_in')} />
-                            </Field>
-
-                            <Field label="Jam pulang" error={form.errors.time_out}>
-                                <input type="time" className={fieldCls} value={form.data.time_out} onChange={set('time_out')} />
+                        <div className="sm:col-span-2">
+                            <Field label="Status" error={form.errors.status}>
+                                <select className={fieldCls} value={form.data.status} onChange={onStatusChange}>
+                                    {statusOptions.map(([value, label]) => (
+                                        <option key={value} value={value}>
+                                            {label}
+                                        </option>
+                                    ))}
+                                </select>
                             </Field>
                         </div>
+
+                        <Field label="Jam masuk" error={form.errors.time_in}>
+                            <input
+                                type="time"
+                                className={fieldCls}
+                                value={form.data.time_in}
+                                onChange={set('time_in')}
+                                disabled={!needsTime}
+                                required={needsTime}
+                            />
+                        </Field>
+
+                        <Field label="Jam pulang" error={form.errors.time_out}>
+                            <input
+                                type="time"
+                                className={fieldCls}
+                                value={form.data.time_out}
+                                min={form.data.time_in || undefined}
+                                onChange={set('time_out')}
+                                disabled={!needsTime}
+                            />
+                        </Field>
 
                         <div className="sm:col-span-2">
                             <Field label="Jurnal (opsional)" error={form.errors.logbook}>
@@ -112,12 +166,13 @@ export default function Manual({ pesertas }: { pesertas: Peserta[] }) {
                                     rows={2}
                                     value={form.data.admin_notes}
                                     onChange={set('admin_notes')}
+                                    required
                                 />
                             </Field>
                         </div>
 
                         <div className="sm:col-span-2">
-                            <button className={primaryBtn} disabled={form.processing}>
+                            <button type="submit" className={primaryBtn} disabled={form.processing || !form.data.user_id}>
                                 <Save className="size-4" />
                                 {form.processing ? 'Menyimpan…' : 'Simpan'}
                             </button>

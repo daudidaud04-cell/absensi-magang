@@ -8,12 +8,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Attendance extends Model
 {
-    protected $fillable = [
+        protected $fillable = [
         'user_id', 'date', 'time_in', 'time_out', 'status', 'source',
         'lat_in', 'lng_in', 'lat_out', 'lng_out',
         'distance_in', 'distance_out', 'accuracy_in', 'accuracy_out',
         'image_in', 'image_out', 'logbook',
-        'is_flagged', 'flag_notes', 'created_by', 'admin_notes',
+        'is_flagged', 'flag_notes', 'created_by', 'updated_by', 'admin_notes',
         'leave_request_id',
     ];
 
