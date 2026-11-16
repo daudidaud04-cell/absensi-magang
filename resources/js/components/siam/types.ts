@@ -28,5 +28,6 @@ export type LeaveRequest = {
     proof_file: string | null;
     status: string;
     review_notes: string | null;
+    cancel_reason?: string | null;
     user?: { id: number; name: string };
 };

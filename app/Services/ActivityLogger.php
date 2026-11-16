@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Auth;
 use App\Models\ActivityLog;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Model;
@@ -21,7 +22,7 @@ class ActivityLogger
     public static function log(string $action, string $description, ?Model $subject = null, array $properties = []): void
     {
         try {
-            $admin = auth()->user();
+             $admin = Auth::user();
 
             ActivityLog::create([
                 'user_id' => $admin?->id,

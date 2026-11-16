@@ -50,6 +50,7 @@ class ManualController extends Controller
                 'admin_notes' => $data['admin_notes'],
                 'source' => 'manual',
                 'created_by' => $request->user()->id,
+                'leave_request_id' => null,
             ]
         );
 

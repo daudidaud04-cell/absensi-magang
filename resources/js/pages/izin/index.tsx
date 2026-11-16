@@ -1,4 +1,4 @@
-import { Head, useForm } from '@inertiajs/react';
+import { Head, router, useForm, usePage } from '@inertiajs/react';
 import { Send } from 'lucide-react';
 import { useState } from 'react';
 import { pBtn, pCard } from '@/components/siam/peserta-ui';
@@ -14,11 +14,24 @@ const statusInfo: Record<string, { label: string; cls: string }> = {
     pending: { label: 'Menunggu', cls: 'bg-amber-100 text-amber-800' },
     approved: { label: 'Disetujui', cls: 'bg-green-100 text-green-700' },
     rejected: { label: 'Ditolak', cls: 'bg-red-100 text-red-700' },
+    cancelled: { label: 'Dibatalkan', cls: 'bg-neutral-100 text-neutral-600' },
 };
 
 const jenisInfo: Record<string, { label: string; cls: string }> = {
     izin: { label: 'Izin', cls: 'bg-blue-100 text-blue-700' },
     sakit: { label: 'Sakit', cls: 'bg-purple-100 text-purple-700' },
+};
+
+// Batas mundur pengajuan (hari). Harus sama dengan aturan di IzinController.
+const MAKS_MUNDUR: Record<string, number> = { izin: 1, sakit: 3 };
+
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+const minTanggal = (type: string) => {
+    const d = new Date();
+    d.setDate(d.getDate() - (MAKS_MUNDUR[type] ?? 1));
+
+    return iso(d);
 };
 
 const fmtDate = (s: string) =>
@@ -44,8 +57,82 @@ function Field({ label, error, children }: { label: string; error?: string; chil
     );
 }
 
+function Riwayat({ r }: { r: LeaveRequest }) {
+    const [konfirmasi, setKonfirmasi] = useState(false);
+    const [busy, setBusy] = useState(false);
+
+    const batal = () =>
+        router.patch(
+            `/izin/${r.id}/batal`,
+            {},
+            {
+                preserveScroll: true,
+                onStart: () => setBusy(true),
+                onFinish: () => {
+                    setBusy(false);
+                    setKonfirmasi(false);
+                },
+            },
+        );
+
+    return (
+        <li className="space-y-1.5 py-3 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+                <Pill info={jenisInfo[r.type]} fallback={r.type} />
+                <Pill info={statusInfo[r.status]} fallback={r.status} />
+            </div>
+
+            <p className="font-medium">{fmtRange(r.start_date, r.end_date)}</p>
+
+            {r.review_notes && <p className="text-neutral-500">Catatan admin: {r.review_notes}</p>}
+
+            {r.status === 'cancelled' && r.cancel_reason && (
+                <p className="text-neutral-500">Dibatalkan admin: {r.cancel_reason}</p>
+            )}
+
+            {r.status === 'approved' && (
+                <p className="text-xs text-neutral-500">Untuk membatalkan izin yang sudah disetujui, hubungi admin.</p>
+            )}
+
+            {r.status === 'pending' &&
+                (konfirmasi ? (
+                    <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <span className="text-neutral-600">Batalkan pengajuan ini?</span>
+
+                        <button
+                            type="button"
+                            onClick={batal}
+                            disabled={busy}
+                            className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60"
+                        >
+                            {busy ? 'Membatalkan...' : 'Ya, batalkan'}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setKonfirmasi(false)}
+                            disabled={busy}
+                            className="rounded-lg border px-3 py-1.5 text-xs font-medium text-neutral-700"
+                        >
+                            Tidak
+                        </button>
+                    </div>
+                ) : (
+                    <button
+                        type="button"
+                        onClick={() => setKonfirmasi(true)}
+                        className="rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
+                    >
+                        Batalkan pengajuan
+                    </button>
+                ))}
+        </li>
+    );
+}
+
 export default function IzinIndex({ requests }: { requests: LeaveRequest[] }) {
     const [fileKey, setFileKey] = useState(0);
+    const { errors } = usePage<{ errors: Record<string, string> }>().props;
 
     const form = useForm({
         type: 'izin',
@@ -54,6 +141,8 @@ export default function IzinIndex({ requests }: { requests: LeaveRequest[] }) {
         reason: '',
         proof_file: null as File | null,
     });
+
+    const minMulai = minTanggal(form.data.type);
 
     const submit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -87,6 +176,7 @@ export default function IzinIndex({ requests }: { requests: LeaveRequest[] }) {
                         <Field label="Tanggal mulai" error={form.errors.start_date}>
                             <input
                                 type="date"
+                                min={minMulai}
                                 className={fieldCls}
                                 value={form.data.start_date}
                                 onChange={(e) => form.setData('start_date', e.target.value)}
@@ -96,12 +186,20 @@ export default function IzinIndex({ requests }: { requests: LeaveRequest[] }) {
                         <Field label="Tanggal selesai" error={form.errors.end_date}>
                             <input
                                 type="date"
+                                min={form.data.start_date || minMulai}
                                 className={fieldCls}
                                 value={form.data.end_date}
                                 onChange={(e) => form.setData('end_date', e.target.value)}
                             />
                         </Field>
                     </div>
+
+                    <p className="-mt-2 text-xs text-neutral-500">
+                        {form.data.type === 'sakit'
+                            ? 'Sakit dapat diajukan paling jauh 3 hari ke belakang.'
+                            : 'Izin dapat diajukan mulai kemarin. Untuk tanggal yang lebih lama, hubungi admin.'}{' '}
+                        Tanggal tidak boleh bertumpuk dengan pengajuan lain, dan hari yang sudah Anda absen tidak bisa diajukan.
+                    </p>
 
                     <Field label="Alasan" error={form.errors.reason}>
                         <textarea
@@ -134,16 +232,15 @@ export default function IzinIndex({ requests }: { requests: LeaveRequest[] }) {
             <section className={pCard}>
                 <h2 className="mb-1 font-semibold">Riwayat Pengajuan</h2>
 
+                {errors.batal && (
+                    <p role="alert" className="my-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+                        {errors.batal}
+                    </p>
+                )}
+
                 <ul className="divide-y">
                     {requests.map((r) => (
-                        <li key={r.id} className="space-y-1.5 py-3 text-sm">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <Pill info={jenisInfo[r.type]} fallback={r.type} />
-                                <Pill info={statusInfo[r.status]} fallback={r.status} />
-                            </div>
-                            <p className="font-medium">{fmtRange(r.start_date, r.end_date)}</p>
-                            {r.review_notes && <p className="text-neutral-500">Catatan admin: {r.review_notes}</p>}
-                        </li>
+                        <Riwayat key={r.id} r={r} />
                     ))}
                     {!requests.length && <li className="py-3 text-sm text-neutral-500">Belum ada pengajuan.</li>}
                 </ul>
