@@ -5,9 +5,9 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\SerahTerimaSertifikat;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class SertifikatController extends Controller
@@ -76,6 +76,8 @@ class SertifikatController extends Controller
             $data['diambil_oleh'] = $user->name;
         }
 
+        $koreksi = SerahTerimaSertifikat::where('user_id', $user->id)->exists();
+
         DB::transaction(function () use ($user, $data) {
             SerahTerimaSertifikat::updateOrCreate(['user_id' => $user->id], $data);
 
@@ -83,13 +85,16 @@ class SertifikatController extends Controller
             $user->forceFill(['certificate_status' => 'sudah_diserahkan'])->save();
         });
 
-        Log::info('SIAM: serah terima sertifikat dicatat', [
-            'user_id' => $user->id,
-            'diserahkan_nama' => $data['diserahkan_nama'],
-            'diambil_oleh' => $data['diambil_oleh'],
-            'tanggal' => $data['tanggal_diambil'],
-            'oleh_admin' => $request->user()->id,
-        ]);
+        ActivityLogger::log(
+            $koreksi ? 'sertifikat.dikoreksi' : 'sertifikat.dicatat',
+            ($koreksi ? 'Mengoreksi' : 'Mencatat').' serah terima sertifikat '.$user->name,
+            $user,
+            [
+                'diserahkan_nama' => $data['diserahkan_nama'],
+                'diambil_oleh' => $data['diambil_oleh'],
+                'tanggal_diambil' => $data['tanggal_diambil'],
+            ],
+        );
 
         return back()->with('success', "Serah terima sertifikat {$user->name} berhasil dicatat.");
     }
@@ -101,14 +106,17 @@ class SertifikatController extends Controller
     {
         abort_unless($user->role === 'magang', 404);
 
+        $lama = SerahTerimaSertifikat::where('user_id', $user->id)->first();
+
         DB::transaction(function () use ($user) {
             SerahTerimaSertifikat::where('user_id', $user->id)->delete();
             $user->forceFill(['certificate_status' => 'belum_diberikan'])->save();
         });
 
-        Log::info('SIAM: serah terima sertifikat dibatalkan', [
-            'user_id' => $user->id,
-            'oleh_admin' => $request->user()->id,
+        ActivityLogger::log('sertifikat.dibatalkan', "Membatalkan serah terima sertifikat {$user->name}", $user, [
+            'diserahkan_nama' => $lama?->diserahkan_nama,
+            'diambil_oleh' => $lama?->diambil_oleh,
+            'tanggal_diambil' => $lama?->tanggal_diambil?->toDateString(),
         ]);
 
         return back()->with('success', "Catatan serah terima {$user->name} dibatalkan.");

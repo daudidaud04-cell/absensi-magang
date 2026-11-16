@@ -216,8 +216,11 @@ class AbsensiController extends Controller
         if ($now->format('H:i:s') > $office->jam_pulang) {
             $svc->fail('Sudah melewati jam kerja. Hubungi admin untuk absen manual.');
         }
-        if (Attendance::query()->where('user_id', $user->id)->whereDate('date', $date)->exists()) {
-            $svc->fail('Absensi hari ini sudah tercatat.');
+            $sudah = Attendance::query()->where('user_id', $user->id)->whereDate('date', $date)->first();
+        if ($sudah) {
+            $svc->fail(in_array($sudah->status, ['izin', 'sakit'], true) && ! $sudah->time_in
+                ? "Hari ini Anda tercatat {$sudah->status}, jadi tidak perlu absen."
+                : 'Absensi hari ini sudah tercatat.');
         }
 
         $distance = $svc->checkLocation(
@@ -271,6 +274,9 @@ class AbsensiController extends Controller
             ->where('user_id', $user->id)
             ->whereDate('date', $now->toDateString())
             ->first();
+        if ($attendance && ! $attendance->time_in && in_array($attendance->status, ['izin', 'sakit'], true)) {
+            $svc->fail("Hari ini Anda tercatat {$attendance->status}, jadi tidak perlu absen.");
+        }
         if (! $attendance || ! $attendance->time_in) {
             $svc->fail('Anda belum absen masuk hari ini.');
         }

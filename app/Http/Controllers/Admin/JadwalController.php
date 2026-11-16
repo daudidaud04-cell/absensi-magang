@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\AppSetting;
 use App\Models\Holiday;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -48,7 +49,15 @@ class JadwalController extends Controller
             return back()->withErrors(['saturday_anchor' => 'Tanggal acuan harus hari Sabtu.']);
         }
 
+        $lama = AppSetting::get('saturday_anchor', config('absensi.saturday_anchor', '2026-10-31'));
+
         AppSetting::put('saturday_anchor', $tanggal->toDateString());
+
+        if ($lama !== $tanggal->toDateString()) {
+            ActivityLogger::log('jadwal.acuan_diubah', 'Mengubah tanggal acuan Sabtu', null, [
+                'saturday_anchor' => ['dari' => $lama, 'menjadi' => $tanggal->toDateString()],
+            ]);
+        }
 
         return back();
     }
@@ -61,7 +70,18 @@ class JadwalController extends Controller
             'work_pattern' => ['required', 'in:weekday,saturday_a,saturday_b'],
         ]);
 
-        $user->forceFill(['work_pattern' => $data['work_pattern']])->save();
+        $user->forceFill(['work_pattern' => $data['work_pattern']]);
+        $perubahan = ActivityLogger::perubahan($user);
+        $user->save();
+
+        if ($perubahan) {
+            ActivityLogger::log(
+                'jadwal.pola_diubah',
+                "Mengubah pola kerja {$user->name} menjadi {$data['work_pattern']}",
+                $user,
+                $perubahan,
+            );
+        }
 
         return back();
     }

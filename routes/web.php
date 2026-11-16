@@ -35,6 +35,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/izin', [IzinController::class, 'index']);
         Route::post('/izin', [IzinController::class, 'store']);
+        Route::patch('/izin/{leaveRequest}/batal', [IzinController::class, 'batal']);
 
         Route::get('/absensi/absen', [AbsensiController::class, 'form']);
         Route::get('/absensi/berhasil', [AbsensiController::class, 'berhasil']);
@@ -77,6 +78,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/izin', [Admin\IzinReviewController::class, 'index']);
         Route::patch('/izin/{leaveRequest}', [Admin\IzinReviewController::class, 'update']);
+        Route::patch('/izin/{leaveRequest}/batalkan', [Admin\IzinReviewController::class, 'batalkan']);
 
         Route::get('/manual', [Admin\ManualController::class, 'create']);
         Route::post('/manual', [Admin\ManualController::class, 'store']);
@@ -93,6 +95,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/rekap', [Admin\RekapController::class, 'index']);
         Route::get('/rekap/export', [Admin\RekapController::class, 'export']);
+        Route::get('/log', [Admin\ActivityLogController::class, 'index']);
     });
 });
 

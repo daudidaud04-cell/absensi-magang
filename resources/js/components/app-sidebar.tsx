@@ -10,6 +10,7 @@ import {
     LayoutGrid,
     MapPin,
     PencilLine,
+    ScrollText,
     Settings,
     Users,
 } from 'lucide-react';
@@ -49,6 +50,7 @@ const entries: NavEntry[] = [
         ],
     },
     { title: 'Pengaturan', href: '/admin/pengaturan', icon: Settings },
+    { title: 'Log Aktivitas', href: '/admin/log', icon: ScrollText },
 ];
 
 export function AppSidebar() {
