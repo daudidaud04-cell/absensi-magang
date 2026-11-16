@@ -93,6 +93,7 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/rekap', [Admin\RekapController::class, 'index']);
         Route::get('/rekap/export', [Admin\RekapController::class, 'export']);
+        Route::get('/log', [Admin\ActivityLogController::class, 'index']);
     });
 });
 

@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Location;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use App\Services\RekapKehadiran;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
@@ -80,6 +80,13 @@ class PesertaController extends Controller
             'certificate_status' => 'belum_diberikan',
         ])->save();
 
+        ActivityLogger::log('peserta.dibuat', "Menambah peserta {$user->name}", $user, [
+            'email' => $user->email,
+            'instansi' => $user->instansi,
+            'start_date' => $user->start_date?->toDateString(),
+            'end_date' => $user->end_date?->toDateString(),
+        ]);
+
         return redirect('/admin/peserta');
     }
 
@@ -118,17 +125,19 @@ class PesertaController extends Controller
             unset($data['password']);
         }
 
-        // Jejak audit perpanjangan/perubahan periode magang
-        if ($user->end_date?->toDateString() !== $data['end_date']) {
-            Log::info('SIAM: end_date diubah', [
-                'user_id' => $user->id,
-                'dari' => $user->end_date?->toDateString(),
-                'menjadi' => $data['end_date'],
-                'oleh_admin' => $request->user()->id,
-            ]);
-        }
+        // Catat nilai sebelum/sesudah (termasuk perpanjangan periode magang)
+        $user->fill($data);
+        $perubahan = ActivityLogger::perubahan($user);
+        $user->save();
 
-        $user->update($data);
+        if ($perubahan) {
+            ActivityLogger::log(
+                'peserta.diubah',
+                "Mengubah data peserta {$user->name} (".implode(', ', array_keys($perubahan)).')',
+                $user,
+                $perubahan,
+            );
+        }
 
         return redirect('/admin/peserta');
     }
@@ -154,16 +163,21 @@ class PesertaController extends Controller
 
         $nama = $user->name;
 
-        // Jejak audit penghapusan
-        Log::info('SIAM: peserta dihapus', [
-            'user_id' => $user->id,
-            'nama' => $nama,
-            'email' => $user->email,
-            'oleh_admin' => $request->user()->id,
-        ]);
+        // Transaksi: kalau ada yang gagal, tidak ada data yang setengah terhapus.
+        // Log dicatat di dalam transaksi supaya tidak tercatat kalau penghapusan gagal.
+        DB::transaction(function () use ($user, $nama) {
+            $jumlahAbsensi = $user->attendances()->count();
+            $jumlahIzin = $user->leaveRequests()->count();
 
-        // Transaksi: kalau ada yang gagal, tidak ada data yang setengah terhapus
-        DB::transaction(fn () => $user->delete());
+            $user->delete();
+
+            ActivityLogger::log('peserta.dihapus', "Menghapus peserta {$nama}", $user, [
+                'email' => $user->email,
+                'instansi' => $user->instansi,
+                'absensi_terhapus' => $jumlahAbsensi,
+                'izin_terhapus' => $jumlahIzin,
+            ]);
+        });
 
         return redirect('/admin/peserta')->with('success', "Peserta {$nama} berhasil dihapus.");
     }
